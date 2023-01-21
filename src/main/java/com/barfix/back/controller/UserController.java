@@ -2,20 +2,101 @@ package com.barfix.back.controller;
 
 import com.barfix.back.model.User;
 import com.barfix.back.repository.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.*;
+
+import static com.barfix.back.BackApplication.secretKey;
 
 @RestController
+@RequestMapping("/api/v1/users")
 public class UserController {
     @Autowired
     private UserRepository userRepository;
 
-    @GetMapping("/users")
-    public List<User> listAll() {
-        return userRepository.findAll();
+    @GetMapping("/get")
+    public ResponseEntity<List<User>> listAll() {
+        List<User> allUsers = userRepository.findAll();
+        if (allUsers.size() == 0) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+        else return new ResponseEntity<>(allUsers, HttpStatus.OK);
+    }
+
+    @GetMapping("/get/{id}")
+    public ResponseEntity<Optional<User>> getUser(@PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
+        if (!token.isBlank()) {
+            Claims claims = JWTParser(token);
+            Optional<User> user = Optional.empty();
+            if (claims.get("id").toString().equals(id)) user = userRepository.findById(id);
+            if (user.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+            else return new ResponseEntity<>(user, HttpStatus.OK);
+        }
+        else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+    @PostMapping(value = "/create", produces = "application/json")
+    public ResponseEntity<String> newUser(@RequestBody String attributes) {
+        JSONObject json = new JSONObject(attributes);
+        Optional<User> findUser = userRepository.findByEmail(json.getString("email"));
+        if (findUser != null)
+            return new ResponseEntity(null, null, HttpStatus.CONFLICT);
+        else {
+            User user = new User(UUID.randomUUID().toString(), json.getString("firstName"), json.getString("lastName"), json.getString("email"), json.getString("password"), json.getString("role"));
+            userRepository.save(user);
+            String generatedJWT = JWTBuilder(user);
+            JSONObject response = new JSONObject();
+            response.put("id", user.id);
+            response.put("firstName", user.firstName);
+            response.put("lastName", user.lastName);
+            response.put("email", user.email);
+            response.put("role", user.role);
+            response.put("token", generatedJWT);
+            return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
+        }
+
+    }
+    @PostMapping(value = "/login", produces = "application/json")
+    public ResponseEntity<String> login(@RequestBody String attributes) {
+        JSONObject json = new JSONObject(attributes);
+        Optional<User> optionalUser = userRepository.findByEmail(json.getString("email"));
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            if (json.get("password").equals(user.getPassword())) {
+                String generatedJWT = JWTBuilder(user);
+                JSONObject response = new JSONObject();
+                response.put("id", user.id);
+                response.put("firstName", user.firstName);
+                response.put("lastName", user.lastName);
+                response.put("email", user.email);
+                response.put("role", user.role);
+                response.put("token", generatedJWT);
+                return new ResponseEntity<>(response.toString(), HttpStatus.OK);
+            }
+            else return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        else return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+
+    private String JWTBuilder(User user) {
+        return Jwts.builder()
+                .signWith(secretKey)
+                .setIssuer("Barfix")
+                .setSubject("Userdata")
+                .claim("id", user.getId())
+                .claim("firstName", user.getFirstName())
+                .claim("lastName", user.getLastName())
+                .claim("email", user.getEmail())
+                .claim("password", user.getPassword())
+                .claim("role", user.getRole())
+                .setIssuedAt(Calendar.getInstance().getTime())
+                .compact();
+    }
+    private Claims JWTParser(String token){
+        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
     }
 }
