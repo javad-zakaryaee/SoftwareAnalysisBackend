@@ -8,18 +8,24 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static com.barfix.back.BackApplication.secretKey;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/user")
 public class UserController {
     @Autowired
     private UserRepository userRepository;
+
+    public static Claims JWTParser(String token) {
+        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
+    }
 
     @GetMapping("/get")
     public ResponseEntity<List<User>> listAll() {
@@ -30,15 +36,15 @@ public class UserController {
 
     @GetMapping("/get/{id}")
     public ResponseEntity<Optional<User>> getUser(@PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        if (!token.isBlank()) {
+        if (token != null) {
             Claims claims = JWTParser(token);
             Optional<User> user = Optional.empty();
             if (claims.get("id").toString().equals(id)) user = userRepository.findById(id);
             if (user.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
             else return new ResponseEntity<>(user, HttpStatus.OK);
-        }
-        else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
+
     @PostMapping(value = "/create", produces = "application/json")
     public ResponseEntity<String> newUser(@RequestBody String attributes) {
         JSONObject json = new JSONObject(attributes);
@@ -60,6 +66,40 @@ public class UserController {
         }
 
     }
+
+    @PutMapping(value = "update/{id}", produces = "application/json")
+    public ResponseEntity updateUser(@RequestBody String attributes, @PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
+        JSONObject json = new JSONObject(attributes);
+        if (!token.isBlank()) {
+            Claims claims = JWTParser(token);
+            Optional<User> user = Optional.empty();
+            if (claims.get("id").toString().equals(id)) user = userRepository.findById(id);
+            if (user.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+            else {
+                User userUpdate = user.get();
+                if (json.has("role")) userUpdate.setRole(json.getString("role"));
+                if (json.has("email")) userUpdate.setEmail(json.getString("email"));
+                if (json.has("firstName")) userUpdate.setFirstName(json.getString("firstName"));
+                if (json.has("lastName")) userUpdate.setLastName(json.getString("lastName"));
+                if (json.has("password")) userUpdate.setPassword(json.getString("password"));
+                userRepository.save(userUpdate);
+                return new ResponseEntity(HttpStatus.OK);
+            }
+        } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+
+    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
+    public ResponseEntity deleteUser(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
+        String userIdFromToken = JWTParser(token).get("id").toString();
+        Optional<User> user = userRepository.findById(id);
+        if (user.isPresent()) {
+            if (user.get().getId().equals(userIdFromToken)) {
+                userRepository.delete(user.get());
+                return new ResponseEntity(HttpStatus.OK);
+            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
+    }
+
     @PostMapping(value = "/login", produces = "application/json")
     public ResponseEntity<String> login(@RequestBody String attributes) {
         JSONObject json = new JSONObject(attributes);
@@ -76,11 +116,10 @@ public class UserController {
                 response.put("role", user.role);
                 response.put("token", generatedJWT);
                 return new ResponseEntity<>(response.toString(), HttpStatus.OK);
-            }
-            else return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
-        }
-        else return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            } else return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        } else return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
 
     private String JWTBuilder(User user) {
         return Jwts.builder()
@@ -95,8 +134,5 @@ public class UserController {
                 .claim("role", user.getRole())
                 .setIssuedAt(Calendar.getInstance().getTime())
                 .compact();
-    }
-    private Claims JWTParser(String token){
-        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
     }
 }
