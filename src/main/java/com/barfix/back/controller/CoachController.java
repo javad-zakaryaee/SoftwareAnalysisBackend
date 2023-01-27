@@ -35,14 +35,10 @@ public class CoachController {
     }
 
     @GetMapping(value = "/get/{id}", produces = "application/json")
-    public ResponseEntity<Optional<Coach>> getCoach(@PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        if (!token.isBlank()) {
-            Claims claims = JWTParser(token);
-            Optional<Coach> coach = Optional.empty();
-            if (claims.get("id").toString().equals(id)) coach = coachRepository.findById(id);
+    public ResponseEntity<Optional<Coach>> getCoach(@PathVariable String id) {
+            Optional<Coach> coach = coachRepository.findById(id);
             if (coach.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
             else return new ResponseEntity<>(coach, HttpStatus.OK);
-        } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
     @PostMapping(value = "/create", produces = "application/json")
@@ -69,7 +65,7 @@ public class CoachController {
         }
     }
 
-    @PutMapping(value = "update/{id}", produces = "application/json")
+    @PutMapping(value = "/update/{id}", produces = "application/json")
     public ResponseEntity updateCoach(@RequestBody String attributes, @PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
         JSONObject json = new JSONObject(attributes);
         if (token != null) {
@@ -88,18 +84,20 @@ public class CoachController {
         } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
-    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
-    public ResponseEntity deleteCoach(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        String userIdFromToken = JWTParser(token).get("id").toString();
-        Optional<Coach> coach = coachRepository.findById(id);
-        if (coach.isPresent()) {
-            User user = coach.get().getUser();
-            if (user.getId().equals(userIdFromToken)) {
-                coachRepository.delete(coach.get());
-                return new ResponseEntity(HttpStatus.OK);
-            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
-
-        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
-
-    }
+//    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
+//    public ResponseEntity deleteCoach(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
+//        String userIdFromToken = JWTParser(token).get("id").toString();
+//        Optional<Coach> coach = coachRepository.findById(id);
+//        if (coach.isPresent()) {
+//            User user = coach.get().getUser();
+//            if (user.getId().equals(userIdFromToken)) {
+//                coachRepository.delete(coach.get());
+//                user.setRole("trainee");
+//                userRepository.save(user);
+//                return new ResponseEntity(HttpStatus.OK);
+//            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+//
+//        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
+//
+//    }
 }

@@ -1,31 +1,35 @@
 package com.barfix.back.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+import lombok.*;
 
 import java.sql.Date;
+import java.util.List;
 
 @Entity
-@Table(name = "exerciseplan", schema = "public")
+@Table(name = "plan", schema = "public")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@RequiredArgsConstructor
 public class Plan {
     @Id
-    public String id;
-    @ManyToOne()
     @NonNull
-    @JoinColumn(name = "coach_id" , referencedColumnName = "id")
+    public String id;
+    @ManyToOne
+    @JsonBackReference
+    @NonNull
+    @JoinColumn(name = "coach_id")
     public Coach coach;
     @Column(name = "name")
+    @NonNull
     public String name;
     @Column(name = "difficulty")
+    @NonNull
     public String text;
-    @Column(name = "exercises")
-    public String exercises;
-    @Column(name = "repeatTimes")
-    public String repeatTimes;
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<PlanExercise> exercises;
 }

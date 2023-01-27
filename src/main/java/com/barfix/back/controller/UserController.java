@@ -23,10 +23,27 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
-    public static Claims JWTParser(String token) {
-        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
-    }
+    @PostMapping(value = "/create", produces = "application/json")
+    public ResponseEntity<String> newUser(@RequestBody String attributes) {
+        JSONObject json = new JSONObject(attributes);
+        Optional<User> findUser = userRepository.findByEmail(json.getString("email"));
+        if (findUser.isPresent())
+            return new ResponseEntity(null, null, HttpStatus.CONFLICT);
+        else {
+            User user = new User(UUID.randomUUID().toString(), json.getString("firstName"), json.getString("lastName"), json.getString("email"), json.getString("password"), json.getString("role"));
+            userRepository.save(user);
+            String generatedJWT = JWTBuilder(user);
+            JSONObject response = new JSONObject();
+            response.put("id", user.id);
+            response.put("firstName", user.firstName);
+            response.put("lastName", user.lastName);
+            response.put("email", user.email);
+            response.put("role", user.role);
+            response.put("token", generatedJWT);
+            return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
+        }
 
+    }
     @GetMapping("/get")
     public ResponseEntity<List<User>> listAll() {
         List<User> allUsers = userRepository.findAll();
@@ -45,32 +62,12 @@ public class UserController {
         } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
-    @PostMapping(value = "/create", produces = "application/json")
-    public ResponseEntity<String> newUser(@RequestBody String attributes) {
-        JSONObject json = new JSONObject(attributes);
-        Optional<User> findUser = userRepository.findByEmail(json.getString("email"));
-        if (findUser != null)
-            return new ResponseEntity(null, null, HttpStatus.CONFLICT);
-        else {
-            User user = new User(UUID.randomUUID().toString(), json.getString("firstName"), json.getString("lastName"), json.getString("email"), json.getString("password"), json.getString("role"));
-            userRepository.save(user);
-            String generatedJWT = JWTBuilder(user);
-            JSONObject response = new JSONObject();
-            response.put("id", user.id);
-            response.put("firstName", user.firstName);
-            response.put("lastName", user.lastName);
-            response.put("email", user.email);
-            response.put("role", user.role);
-            response.put("token", generatedJWT);
-            return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
-        }
 
-    }
 
-    @PutMapping(value = "update/{id}", produces = "application/json")
+    @PutMapping(value = "/update/{id}", produces = "application/json")
     public ResponseEntity updateUser(@RequestBody String attributes, @PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
         JSONObject json = new JSONObject(attributes);
-        if (!token.isBlank()) {
+        if (token!=null) {
             Claims claims = JWTParser(token);
             Optional<User> user = Optional.empty();
             if (claims.get("id").toString().equals(id)) user = userRepository.findById(id);
@@ -88,17 +85,18 @@ public class UserController {
         } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
-    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
-    public ResponseEntity deleteUser(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        String userIdFromToken = JWTParser(token).get("id").toString();
-        Optional<User> user = userRepository.findById(id);
-        if (user.isPresent()) {
-            if (user.get().getId().equals(userIdFromToken)) {
-                userRepository.delete(user.get());
-                return new ResponseEntity(HttpStatus.OK);
-            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
-        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
-    }
+//    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
+//    public ResponseEntity deleteUser(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
+//        if (token == null) return new ResponseEntity(HttpStatus.FORBIDDEN);
+//        String userIdFromToken = JWTParser(token).get("id").toString();
+//        Optional<User> user = userRepository.findById(id);
+//        if (user.isPresent()) {
+//            if (user.get().getId().equals(userIdFromToken)) {
+//                userRepository.delete(user.get());
+//                return new ResponseEntity(HttpStatus.OK);
+//            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+//        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
+//    }
 
     @PostMapping(value = "/login", produces = "application/json")
     public ResponseEntity<String> login(@RequestBody String attributes) {
@@ -109,11 +107,11 @@ public class UserController {
             if (json.get("password").equals(user.getPassword())) {
                 String generatedJWT = JWTBuilder(user);
                 JSONObject response = new JSONObject();
-                response.put("id", user.id);
-                response.put("firstName", user.firstName);
-                response.put("lastName", user.lastName);
-                response.put("email", user.email);
-                response.put("role", user.role);
+                response.put("id", user.getId());
+                response.put("firstName", user.getFirstName());
+                response.put("lastName", user.getLastName());
+                response.put("email", user.getEmail());
+                response.put("role", user.getRole());
                 response.put("token", generatedJWT);
                 return new ResponseEntity<>(response.toString(), HttpStatus.OK);
             } else return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
@@ -134,5 +132,8 @@ public class UserController {
                 .claim("role", user.getRole())
                 .setIssuedAt(Calendar.getInstance().getTime())
                 .compact();
+    }
+    public static Claims JWTParser(String token) {
+        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
     }
 }

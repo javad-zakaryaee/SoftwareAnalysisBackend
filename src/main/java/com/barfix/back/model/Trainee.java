@@ -1,10 +1,8 @@
 package com.barfix.back.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+import lombok.*;
 
 import java.sql.Date;
 
@@ -13,27 +11,32 @@ import java.sql.Date;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@RequiredArgsConstructor
 public class Trainee {
     @Id
+    @NonNull
     public String id;
     @OneToOne(cascade = CascadeType.ALL)
     @NonNull
     @JoinColumn(name = "user_id" , referencedColumnName = "id")
     public User user;
-    @ManyToOne(cascade = CascadeType.ALL)
-    @NonNull
-    @JoinColumn(name = "coach_id" , referencedColumnName = "id")
+    @ManyToOne
+    @JsonBackReference
+    @JoinColumn(name = "coach_id")
     public Coach coach;
     @OneToOne(cascade = CascadeType.ALL)
-    @NonNull
     @JoinColumn(name = "plan_id" , referencedColumnName = "id")
     public Plan plan;
     @Column(name = "birthdate")
+    @NonNull
     public Date birthdate;
     @Column(name = "height")
-    public int height;
+    @NonNull
+    public Integer height;
     @Column(name = "weight")
-    public double weight;
+    @NonNull
+    public Double weight;
     @Column(name = "goal")
+    @NonNull
     public String goal;
 }

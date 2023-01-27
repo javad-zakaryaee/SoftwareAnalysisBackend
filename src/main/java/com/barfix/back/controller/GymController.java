@@ -51,14 +51,13 @@ public class GymController {
         if(gymRepository.findById(id).isPresent()) return new ResponseEntity(gymRepository.findById(id), HttpStatus.OK);
         else return new ResponseEntity(HttpStatus.NOT_FOUND);
     }
-    @PutMapping(value = "update/{id}", produces = "application/json")
+    @PutMapping(value = "/update/{id}", produces = "application/json")
     public ResponseEntity updateGym(@RequestBody String attributes, @PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
         JSONObject json = new JSONObject(attributes);
-        if (!token.isBlank()) {
+        if (token!=null) {
             Optional<Gym> gym = gymRepository.findById(id);
             if (!gym.isPresent()) return new ResponseEntity(HttpStatus.NOT_FOUND);
             Claims claims = JWTParser(token);
-            Optional<User> user = Optional.empty();
             if (claims.get("id").toString().equals(gym.get().getOwner().getId())) {
                 Gym gymUpdate = gym.get();
                 if (json.has("owner") && userRepository.findById(json.getString("owner")).isPresent() ) gymUpdate.setOwner(userRepository.findById(json.getString("owner")).get());
@@ -73,18 +72,18 @@ public class GymController {
             } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }else return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
     }
-    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
-    public ResponseEntity deleteGym(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        String userIdFromToken = JWTParser(token).get("id").toString();
-        Optional<Gym> gym = gymRepository.findById(id);
-        if (gym.isPresent()) {
-            User owner = gym.get().getOwner();
-            if (owner.getId().equals(userIdFromToken)) {
-                gymRepository.delete(gym.get());
-                return new ResponseEntity(HttpStatus.OK);
-            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
-
-        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
-
-    }
+//    @DeleteMapping(value = "/delete/{id}", produces = "application/json")
+//    public ResponseEntity deleteGym(@PathVariable(name = "id") String id, @RequestHeader(name = "Authorization", required = false) String token) {
+//        String userIdFromToken = JWTParser(token).get("id").toString();
+//        Optional<Gym> gym = gymRepository.findById(id);
+//        if (gym.isPresent()) {
+//            User owner = gym.get().getOwner();
+//            if (owner.getId().equals(userIdFromToken)) {
+//                gymRepository.delete(gym.get());
+//                return new ResponseEntity(HttpStatus.OK);
+//            } else return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+//
+//        } else return new ResponseEntity(HttpStatus.NOT_FOUND);
+//
+//    }
 }
