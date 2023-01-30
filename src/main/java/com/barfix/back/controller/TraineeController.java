@@ -1,19 +1,22 @@
 package com.barfix.back.controller;
 
-import com.barfix.back.model.*;
+import com.barfix.back.model.Plan;
+import com.barfix.back.model.Trainee;
+import com.barfix.back.model.User;
 import com.barfix.back.repository.*;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.sql.Date;
 import java.util.Optional;
 import java.util.UUID;
 
 import static com.barfix.back.controller.UserController.JWTParser;
+import static com.barfix.back.controller.UserController.JWTBuilder;
 
 @RestController
 @RequestMapping("/api/v1/trainee")
@@ -36,10 +39,10 @@ public class TraineeController {
 
     @GetMapping(value = "/get/{id}", produces = "application/json")
     public ResponseEntity<Optional<Trainee>> getTrainee(@PathVariable String id, @RequestHeader(name = "Authorization", required = false) String token) {
-        if (token!=null) {
+        if (token != null) {
             Claims claims = JWTParser(token);
             Optional<Trainee> trainee = Optional.empty();
-            if (claims.get("id").toString().equals(id)) trainee = traineeRepository.findById(id);
+            if (claims.get("id").toString().equals(id)) trainee = traineeRepository.findByUser(userRepository.findById(id).get());
             if (trainee.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
             else return new ResponseEntity<>(trainee, HttpStatus.OK);
         } else return new ResponseEntity<>(HttpStatus.FORBIDDEN);
@@ -49,22 +52,18 @@ public class TraineeController {
     public ResponseEntity<String> newTrainee(@RequestBody String attributes) {
         JSONObject json = new JSONObject(attributes);
         Optional<User> traineeUser = userRepository.findByEmail(json.getString("email"));
-        if (traineeUser.isPresent() && traineeUser.get().getRole().equalsIgnoreCase("trainee"))
-            return new ResponseEntity(null, null, HttpStatus.CONFLICT);
-        else if (traineeUser.isPresent() && !traineeUser.get().getRole().equalsIgnoreCase("trainee")) {
-            Trainee newTrainee = new Trainee(UUID.randomUUID().toString(), traineeUser.get(), Date.valueOf(json.getString("birthdate")), Integer.valueOf(json.getString("height")), Double.valueOf(json.getString("weight")), json.getString("goal"));
-            traineeRepository.save(newTrainee);
-            User updateRole = traineeUser.get();
-            updateRole.setRole("trainee");
-            userRepository.save(updateRole);
-            JSONObject response = new JSONObject();
-            response.put("id", traineeUser.get().getId());
-            response.put("firstName", traineeUser.get().getFirstName());
-            response.put("lastName", traineeUser.get().getLastName());
-            return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_ACCEPTABLE);
-        }
+        Trainee newTrainee = new Trainee(UUID.randomUUID().toString(), traineeUser.get(), json.getInt("height"), json.getDouble("weight"), json.getString("goal"));
+        traineeRepository.save(newTrainee);
+        User updateRole = traineeUser.get();
+        updateRole.setRole("trainee");
+        userRepository.save(updateRole);
+        JSONObject response = new JSONObject();
+        response.put("id", traineeUser.get().getId());
+        response.put("firstName", traineeUser.get().getFirstName());
+        response.put("lastName", traineeUser.get().getLastName());
+        response.put("token", JWTBuilder(traineeUser.get()));
+        return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
+
     }
 
     @PutMapping(value = "/update/{id}", produces = "application/json")

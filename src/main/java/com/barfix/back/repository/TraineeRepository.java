@@ -2,8 +2,11 @@ package com.barfix.back.repository;
 
 
 import com.barfix.back.model.Trainee;
+import com.barfix.back.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TraineeRepository extends JpaRepository<Trainee, String> {
+import java.util.Optional;
 
+public interface TraineeRepository extends JpaRepository<Trainee, String> {
+    Optional<Trainee> findByUser(User user);
 }

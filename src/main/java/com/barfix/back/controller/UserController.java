@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Date;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +31,7 @@ public class UserController {
         if (findUser.isPresent())
             return new ResponseEntity(null, null, HttpStatus.CONFLICT);
         else {
-            User user = new User(UUID.randomUUID().toString(), json.getString("firstName"), json.getString("lastName"), json.getString("email"), json.getString("password"), json.getString("role"));
+            User user = new User(UUID.randomUUID().toString(), json.getString("firstName"), json.getString("lastName"), json.getString("email"), json.getString("password"), json.getString("role"), Date.valueOf(json.getString("birthdate")));
             userRepository.save(user);
             String generatedJWT = JWTBuilder(user);
             JSONObject response = new JSONObject();
@@ -39,6 +40,7 @@ public class UserController {
             response.put("lastName", user.lastName);
             response.put("email", user.email);
             response.put("role", user.role);
+            response.put("birthdate", user.birthdate.toString());
             response.put("token", generatedJWT);
             return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
         }
@@ -79,6 +81,7 @@ public class UserController {
                 if (json.has("firstName")) userUpdate.setFirstName(json.getString("firstName"));
                 if (json.has("lastName")) userUpdate.setLastName(json.getString("lastName"));
                 if (json.has("password")) userUpdate.setPassword(json.getString("password"));
+                if(json.has("birthdate")) userUpdate.setBirthdate(Date.valueOf(json.getString("birthdate")));
                 userRepository.save(userUpdate);
                 return new ResponseEntity(HttpStatus.OK);
             }
@@ -119,7 +122,7 @@ public class UserController {
     }
 
 
-    private String JWTBuilder(User user) {
+    public static String JWTBuilder(User user) {
         return Jwts.builder()
                 .signWith(secretKey)
                 .setIssuer("Barfix")
@@ -130,6 +133,7 @@ public class UserController {
                 .claim("email", user.getEmail())
                 .claim("password", user.getPassword())
                 .claim("role", user.getRole())
+                .claim("birthdate" , user.getBirthdate())
                 .setIssuedAt(Calendar.getInstance().getTime())
                 .compact();
     }

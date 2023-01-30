@@ -27,9 +27,7 @@ public class Trainee {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "plan_id" , referencedColumnName = "id")
     public Plan plan;
-    @Column(name = "birthdate")
-    @NonNull
-    public Date birthdate;
+
     @Column(name = "height")
     @NonNull
     public Integer height;

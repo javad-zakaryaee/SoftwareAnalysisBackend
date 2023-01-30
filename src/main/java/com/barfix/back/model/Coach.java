@@ -22,12 +22,6 @@ public class Coach {
     @NonNull
     public String id;
 
-
-    @Column(name = "birthdate")
-    @NonNull
-    public Date birthdate;
-
-
     @ManyToOne
     @JsonBackReference
     @NonNull
@@ -35,10 +29,9 @@ public class Coach {
     public Gym gym;
 
 
-    @OneToOne(cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @NonNull
     @JoinColumn(name = "user_id", referencedColumnName = "id")
-    @JsonIgnore
     public User user;
 
 

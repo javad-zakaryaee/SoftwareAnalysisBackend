@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.sql.Date;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,33 +35,28 @@ public class CoachController {
 
     @GetMapping(value = "/get/{id}", produces = "application/json")
     public ResponseEntity<Optional<Coach>> getCoach(@PathVariable String id) {
-            Optional<Coach> coach = coachRepository.findById(id);
-            if (coach.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
-            else return new ResponseEntity<>(coach, HttpStatus.OK);
+        Optional<Coach> coach = coachRepository.findByUser(userRepository.findById(id).get());
+        if (coach.isEmpty()) return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+        else return new ResponseEntity<>(coach, HttpStatus.OK);
     }
 
     @PostMapping(value = "/create", produces = "application/json")
     public ResponseEntity<String> newCoach(@RequestBody String attributes) {
         JSONObject json = new JSONObject(attributes);
         Optional<User> coachUser = userRepository.findByEmail(json.getString("email"));
-        if (coachUser.isPresent() && coachUser.get().getRole().equalsIgnoreCase("coach"))
-            return new ResponseEntity(null, null, HttpStatus.CONFLICT);
-        else if (coachUser.isPresent() && !coachUser.get().getRole().equalsIgnoreCase("coach")) {
-            Optional<Gym> gym = gymRepository.findById(json.getString("gym"));
-            Coach newCoach = new Coach(UUID.randomUUID().toString(), Date.valueOf(json.getString("birthdate")), gym.get(), coachUser.get());
-            coachRepository.save(newCoach);
-            User updateRole = coachUser.get();
-            updateRole.setRole("coach");
-            userRepository.save(updateRole);
-            JSONObject response = new JSONObject();
-            response.put("id", coachUser.get().getId());
-            response.put("firstName", coachUser.get().getFirstName());
-            response.put("lastName", coachUser.get().getLastName());
-            response.put("gym_name", newCoach.getGym().getName());
-            return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_ACCEPTABLE);
-        }
+        Optional<Gym> gym = gymRepository.findById(json.getString("gym"));
+        Coach newCoach = new Coach(UUID.randomUUID().toString(), gym.get(), coachUser.get());
+        coachRepository.save(newCoach);
+        User updateRole = coachUser.get();
+        updateRole.setRole("coach");
+        userRepository.save(updateRole);
+        JSONObject response = new JSONObject();
+        response.put("id", coachUser.get().getId());
+        response.put("firstName", coachUser.get().getFirstName());
+        response.put("lastName", coachUser.get().getLastName());
+        response.put("gym_name", newCoach.getGym().getName());
+        return new ResponseEntity<>(response.toString(), HttpStatus.CREATED);
+
     }
 
     @PutMapping(value = "/update/{id}", produces = "application/json")
@@ -77,7 +71,6 @@ public class CoachController {
                 if (json.has("gym")) gym = gymRepository.findById(json.getString("gym"));
                 Coach coachUpdate = coach.get();
                 if (gym.isPresent()) coachUpdate.setGym(gym.get());
-                if (json.has("birthdate")) coachUpdate.setBirthdate(Date.valueOf(json.getString("birthdate")));
                 coachRepository.save(coachUpdate);
                 return new ResponseEntity(HttpStatus.OK);
             } else return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);

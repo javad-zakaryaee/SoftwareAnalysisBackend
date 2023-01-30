@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+import java.sql.Date;
+
 @Entity
 @Table(name = "user", schema = "public")
 @Data
@@ -35,5 +37,8 @@ public class User {
     @Column(name = "role")
     @NonNull
     public String role;
+    @Column(name = "birthdate")
+    @NonNull
+    public Date birthdate;
 
 }

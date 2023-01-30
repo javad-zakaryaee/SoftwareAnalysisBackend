@@ -18,7 +18,7 @@ public class Plan {
     @Id
     @NonNull
     public String id;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JsonBackReference
     @NonNull
     @JoinColumn(name = "coach_id")
